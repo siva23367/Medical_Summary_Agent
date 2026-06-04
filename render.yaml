@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: dscribe
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false          # Set this manually in Render dashboard
+    healthCheckPath: /health

@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DScribe — Discharge Summary Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --surface:   #111318;
+    --surface2:  #181c24;
+    --border:    #222835;
+    --border2:   #2e3547;
+    --text:      #d4dae8;
+    --muted:     #5a6480;
+    --accent:    #4f9cf8;
+    --accent-dim:#1e3a5f;
+    --green:     #3ecf8e;
+    --green-dim: #0d3326;
+    --yellow:    #f5c842;
+    --yellow-dim:#3a2e0a;
+    --red:       #f05252;
+    --red-dim:   #3a1212;
+    --orange:    #f87c3f;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+    --serif:     'Playfair Display', serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    height: 56px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 13px; font-weight: 500;
+    color: #fff;
+  }
+  .logo-name {
+    font-family: var(--serif); font-size: 18px; font-weight: 700;
+    color: #fff; letter-spacing: 0.5px;
+  }
+  .logo-tag {
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+    letter-spacing: 1px; text-transform: uppercase; margin-left: 4px;
+  }
+  .header-badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    color: var(--yellow); background: var(--yellow-dim);
+    border: 1px solid var(--yellow);
+    padding: 2px 8px; border-radius: 20px;
+  }
+
+  /* ── LAYOUT ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 24px;
+    display: flex; flex-direction: column; gap: 24px;
+    overflow-y: auto;
+  }
+  .section-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: 10px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon {
+    font-size: 28px; margin-bottom: 10px; display: block;
+  }
+  .upload-zone h3 { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .upload-zone p { font-size: 12px; color: var(--muted); }
+
+  /* File list */
+  .file-list { display: flex; flex-direction: column; gap: 6px; }
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; background: var(--surface2);
+    border-radius: 6px; border: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .file-item .file-icon { color: var(--accent); font-size: 14px; flex-shrink: 0; }
+  .file-item .file-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .file-size { color: var(--muted); font-family: var(--mono); font-size: 10px; }
+  .file-item .remove-btn {
+    background: none; border: none; cursor: pointer; color: var(--muted);
+    font-size: 14px; padding: 2px; line-height: 1;
+    transition: color 0.15s;
+  }
+  .file-item .remove-btn:hover { color: var(--red); }
+
+  /* Gemini key input */
+  .key-input-wrap { position: relative; }
+  .key-input-wrap input {
+    width: 100%; padding: 10px 36px 10px 12px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; color: var(--text);
+    font-family: var(--mono); font-size: 12px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .key-input-wrap input:focus { border-color: var(--accent); }
+  .key-input-wrap input::placeholder { color: var(--muted); }
+  .key-input-wrap .eye-btn {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: var(--muted); font-size: 14px;
+  }
+  .key-hint {
+    margin-top: 6px; font-size: 11px; color: var(--muted);
+  }
+  .key-hint a { color: var(--accent); text-decoration: none; }
+
+  /* Buttons */
+  .btn {
+    width: 100%; padding: 12px;
+    border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 14px; font-weight: 600;
+    transition: all 0.15s; letter-spacing: 0.3px;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: #6aabff; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-demo {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border2); font-size: 12px;
+    padding: 8px;
+  }
+  .btn-demo:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Progress */
+  .progress-block { display: flex; flex-direction: column; gap: 10px; }
+  .step-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 12px;
+  }
+  .step-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .step-dot.done { background: var(--green); }
+  .step-dot.active { background: var(--accent); animation: pulse 1s infinite; }
+  .step-dot.pending { background: var(--border2); }
+  .step-dot.error { background: var(--red); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+  .step-name { color: var(--text); }
+  .step-name.muted { color: var(--muted); }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stats row */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .stat-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 8px; text-align: center;
+  }
+  .stat-val { font-family: var(--mono); font-size: 20px; font-weight: 500; color: #fff; }
+  .stat-val.red { color: var(--red); }
+  .stat-val.yellow { color: var(--yellow); }
+  .stat-val.green { color: var(--green); }
+  .stat-lbl { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* ── MAIN ── */
+  main {
+    padding: 0;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 28px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .tab-btn {
+    background: none; border: none; cursor: pointer;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    color: var(--muted); padding: 14px 18px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn .badge {
+    font-size: 10px; font-family: var(--mono);
+    background: var(--accent-dim); color: var(--accent);
+    padding: 1px 6px; border-radius: 10px;
+  }
+  .tab-btn .badge.red { background: var(--red-dim); color: var(--red); }
+  .tab-btn .badge.yellow { background: var(--yellow-dim); color: var(--yellow); }
+
+  .tab-panel { display: none; flex: 1; }
+  .tab-panel.active { display: block; }
+
+  /* Welcome state */
+  .welcome {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; padding: 60px 40px; text-align: center; gap: 16px;
+  }
+  .welcome-icon { font-size: 48px; opacity: 0.3; }
+  .welcome h2 { font-family: var(--serif); font-size: 26px; color: #fff; font-weight: 600; }
+  .welcome p { color: var(--muted); max-width: 380px; line-height: 1.7; }
+
+  /* Summary output */
+  .summary-wrap { padding: 28px 32px; }
+  .summary-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .summary-title { font-family: var(--serif); font-size: 22px; color: #fff; }
+  .summary-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .copy-btn {
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); padding: 7px 14px; border-radius: 6px;
+    cursor: pointer; font-size: 12px; font-family: var(--sans);
+    display: flex; align-items: center; gap: 6px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .summary-text {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.8;
+    white-space: pre-wrap; color: var(--text);
+    max-height: calc(100vh - 200px); overflow-y: auto;
+  }
+  /* Highlight MISSING / CONFLICT / PENDING */
+  .summary-text .hl-missing { color: var(--red); font-weight: 500; }
+  .summary-text .hl-conflict { color: var(--orange); font-weight: 500; }
+  .summary-text .hl-pending { color: var(--yellow); font-weight: 500; }
+
+  /* Trace panel */
+  .trace-wrap { padding: 28px 32px; }
+  .trace-list { display: flex; flex-direction: column; gap: 10px; }
+  .trace-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+  }
+  .trace-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer; user-select: none;
+    transition: background 0.1s;
+  }
+  .trace-head:hover { background: rgba(255,255,255,0.03); }
+  .trace-num {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted); width: 24px; flex-shrink: 0;
+  }
+  .trace-type-badge {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0;
+  }
+  .trace-reasoning { font-size: 12px; color: var(--text); flex: 1; }
+  .trace-dur { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .trace-chevron { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+  .trace-card.open .trace-chevron { transform: rotate(90deg); }
+  .trace-body {
+    display: none; padding: 0 14px 14px; border-top: 1px solid var(--border);
+  }
+  .trace-card.open .trace-body { display: block; }
+  .trace-json {
+    font-family: var(--mono); font-size: 11px; line-height: 1.6;
+    color: var(--muted); white-space: pre-wrap; margin-top: 10px;
+    max-height: 300px; overflow-y: auto;
+  }
+
+  /* Type badge colors */
+  .tb-PLAN      { background: #1a2a4a; color: #7ab3ff; }
+  .tb-EXTRACT   { background: #1a2e24; color: #5ed4a0; }
+  .tb-VALIDATE  { background: #2a2215; color: #f5c842; }
+  .tb-RECONCILE { background: #2a1a2e; color: #bf84f5; }
+  .tb-CONFLICT_CHECK { background: #2e1a1a; color: #f07070; }
+  .tb-PENDING_CHECK  { background: #1e2a1a; color: #80d47a; }
+  .tb-DRUG_INTERACTION { background: #2e2020; color: #f09070; }
+  .tb-ESCALATE  { background: #2e1e10; color: #f0a060; }
+  .tb-GENERATE_SUMMARY { background: #1a1e30; color: #80a0f5; }
+  .tb-REVIEW    { background: #102e1e; color: #60d4a0; }
+  .tb-DONE      { background: #0d2e1a; color: #3ecf8e; }
+  .tb-ERROR     { background: #2e0d0d; color: #f05252; }
+
+  /* Conflicts panel */
+  .conflicts-wrap { padding: 28px 32px; }
+  .conflict-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; margin-bottom: 12px;
+  }
+  .conflict-card.HIGH { border-left: 3px solid var(--red); }
+  .conflict-card.MEDIUM { border-left: 3px solid var(--yellow); }
+  .conflict-card.LOW { border-left: 3px solid var(--muted); }
+  .conflict-field {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .conflict-msg { font-size: 13px; color: var(--text); margin-bottom: 10px; }
+  .conflict-values { display: flex; flex-direction: column; gap: 4px; }
+  .conflict-value {
+    display: flex; gap: 10px;
+    background: var(--bg); border-radius: 4px; padding: 6px 10px;
+    font-size: 12px;
+  }
+  .cv-src { font-family: var(--mono); color: var(--accent); min-width: 160px; }
+  .cv-val { color: var(--text); }
+  .severity-chip {
+    font-size: 10px; font-family: var(--mono); letter-spacing: 1px;
+    padding: 2px 7px; border-radius: 20px; font-weight: 500;
+  }
+  .severity-chip.HIGH { background: var(--red-dim); color: var(--red); }
+  .severity-chip.MEDIUM { background: var(--yellow-dim); color: var(--yellow); }
+  .severity-chip.LOW { background: var(--surface); color: var(--muted); }
+
+  /* Escalations */
+  .escalations-wrap { padding: 28px 32px; }
+  .esc-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; margin-bottom: 12px;
+    border-left: 3px solid var(--red);
+  }
+  .esc-card.MEDIUM { border-left-color: var(--yellow); }
+  .esc-card.LOW { border-left-color: var(--muted); }
+  .esc-id { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .esc-desc { font-size: 13px; color: var(--text); margin: 6px 0; }
+  .esc-action {
+    font-size: 12px; color: var(--green);
+    background: var(--green-dim); border-radius: 4px; padding: 6px 10px;
+    margin-top: 8px;
+  }
+
+  .no-data {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 60px; color: var(--muted); gap: 12px; text-align: center;
+  }
+  .no-data-icon { font-size: 36px; opacity: 0.3; }
+
+  /* Warnings bar */
+  .warn-bar {
+    margin: 0 32px 20px;
+    background: var(--yellow-dim); border: 1px solid var(--yellow);
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; color: var(--yellow);
+  }
+  .warn-bar ul { padding-left: 16px; margin-top: 4px; }
+  .warn-bar li { margin-top: 4px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: var(--green); color: #fff;
+    padding: 10px 18px; border-radius: 8px; font-size: 13px;
+    opacity: 0; transform: translateY(10px);
+    transition: all 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">Ds</div>
+    <span class="logo-name">DScribe</span>
+    <span class="logo-tag">/ clinical AI</span>
+  </div>
+  <span class="header-badge">⚠ DRAFT ONLY — FOR CLINICIAN REVIEW</span>
+</header>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">Upload Patient PDFs</div>
+      <div class="upload-zone" id="dropZone">
+        <input type="file" id="fileInput" multiple accept=".pdf"/>
+        <span class="upload-icon">📄</span>
+        <h3>Drop PDFs here</h3>
+        <p>Admission notes, lab results,<br>medication records, progress notes</p>
+      </div>
+    </div>
+
+    <div id="fileListSection" style="display:none">
+      <div class="section-label">Selected Files</div>
+      <div class="file-list" id="fileList"></div>
+    </div>
+
+    <div>
+      <div class="section-label">OPEN_ROUTER_API_KEY</div>
+      <div class="key-input-wrap">
+        <input type="password" id="apiKey" placeholder="sk-or-v1-..." autocomplete="off"/>
+        <button class="eye-btn" onclick="toggleKey()">👁</button>
+      </div>
+      <div class="key-hint">
+        Free key at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a>
+        — stored in browser only
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="runBtn" disabled onclick="runAgent()">
+      ▶ Run Agent
+    </button>
+    <button class="btn btn-demo" onclick="runDemo()">
+      ⚡ Run Demo (P001 — CHF case)
+    </button>
+
+    <!-- Progress -->
+    <div id="progressSection" style="display:none">
+      <div class="section-label">Agent Progress</div>
+      <div class="progress-block" id="progressBlock"></div>
+    </div>
+
+    <!-- Stats -->
+    <div id="statsSection" style="display:none">
+      <div class="section-label">Results</div>
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-val" id="statSteps">—</div>
+          <div class="stat-lbl">Steps</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val yellow" id="statConflicts">—</div>
+          <div class="stat-lbl">Conflicts</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val red" id="statEscalations">—</div>
+          <div class="stat-lbl">Escalations</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main>
+    <!-- Welcome -->
+    <div id="welcomePanel" class="tab-panel active">
+      <div class="welcome">
+        <div class="welcome-icon">🏥</div>
+        <h2>Discharge Summary Agent</h2>
+        <p>Upload patient PDFs (admission note, lab results, medication record, progress notes) and the agent will produce a structured discharge summary draft — with full conflict detection, medication reconciliation, and no fabrication.</p>
+        <p style="font-size:12px;font-family:var(--mono);color:var(--muted);margin-top:8px;">
+          Powered by Gemini 2.0 Flash · No PHI retained
+        </p>
+      </div>
+    </div>
+
+    <!-- Results tabs -->
+    <div id="resultsPanel" style="display:none;flex-direction:column;height:100%;">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('summary',this)">📋 Summary</button>
+        <button class="tab-btn" onclick="switchTab('trace',this)">
+          🔍 Trace
+          <span class="badge" id="traceCount">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('conflicts',this)">
+          ⚠ Conflicts
+          <span class="badge yellow" id="conflictCount">0</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('escalations',this)">
+          🚨 Escalations
+          <span class="badge red" id="escalationCount">0</span>
+        </button>
+      </div>
+
+      <div id="tab-summary" class="tab-panel active">
+        <div class="summary-wrap">
+          <div class="summary-header">
+            <div>
+              <div class="summary-title" id="summaryTitle">Discharge Summary</div>
+              <div class="summary-sub" id="summaryMeta"></div>
+            </div>
+            <button class="copy-btn" onclick="copySummary()">📋 Copy</button>
+          </div>
+          <div id="warningsBar"></div>
+          <div class="summary-text" id="summaryText"></div>
+        </div>
+      </div>
+
+      <div id="tab-trace" class="tab-panel">
+        <div class="trace-wrap">
+          <div class="section-label" style="margin-bottom:16px">Agent Step Trace</div>
+          <div class="trace-list" id="traceList"></div>
+        </div>
+      </div>
+
+      <div id="tab-conflicts" class="tab-panel">
+        <div class="conflicts-wrap">
+          <div class="section-label" style="margin-bottom:16px">Detected Conflicts</div>
+          <div id="conflictsList"></div>
+        </div>
+      </div>
+
+      <div id="tab-escalations" class="tab-panel">
+        <div class="escalations-wrap">
+          <div class="section-label" style="margin-bottom:16px">Escalations for Clinician</div>
+          <div id="escalationsList"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const API = '';  // same origin
+
+const STEPS = [
+  'PLAN','EXTRACT','VALIDATE','RECONCILE','CONFLICT_CHECK',
+  'PENDING_CHECK','DRUG_INTERACTION','ESCALATE','GENERATE_SUMMARY','REVIEW','DONE'
+];
+
+let selectedFiles = [];
+let currentJobId = null;
+let pollTimer = null;
+
+// ── File handling ────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  addFiles([...e.dataTransfer.files].filter(f => f.name.endsWith('.pdf')));
+});
+fileInput.addEventListener('change', () => {
+  addFiles([...fileInput.files]);
+  fileInput.value = '';
+});
+document.getElementById('apiKey').addEventListener('input', updateRunBtn);
+
+function addFiles(files) {
+  files.forEach(f => {
+    if (!selectedFiles.find(x => x.name === f.name)) selectedFiles.push(f);
+  });
+  renderFileList();
+  updateRunBtn();
+}
+
+function removeFile(name) {
+  selectedFiles = selectedFiles.filter(f => f.name !== name);
+  renderFileList();
+  updateRunBtn();
+}
+
+function renderFileList() {
+  const section = document.getElementById('fileListSection');
+  const list = document.getElementById('fileList');
+  if (!selectedFiles.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = selectedFiles.map(f => `
+    <div class="file-item">
+      <span class="file-icon">📄</span>
+      <span class="file-name" title="${f.name}">${f.name}</span>
+      <span class="file-size">${(f.size/1024).toFixed(0)}KB</span>
+      <button class="remove-btn" onclick="removeFile('${f.name}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function updateRunBtn() {
+  const key = document.getElementById('apiKey').value.trim();
+  const btn = document.getElementById('runBtn');
+  btn.disabled = !(selectedFiles.length > 0 && key.length > 8);
+}
+
+function toggleKey() {
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// ── Run agent ─────────────────────────────────────────────────────────────────
+async function runAgent() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!selectedFiles.length || !key) return;
+
+  // Store key in session (not persisted)
+  sessionStorage.setItem('gemini_key', key);
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('files', f));
+  formData.append('gemini_key', key);
+
+  startProgress();
+
+  try {
+    const res = await fetch(`${API}/api/run`, { method: 'POST', body: formData });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
+    const { job_id } = await res.json();
+    currentJobId = job_id;
+    pollJob(job_id);
+  } catch(err) {
+    showToast('Error: ' + err.message, true);
+    resetProgress();
+  }
+}
+
+async function runDemo() {
+  startProgress();
+  try {
+    const res = await fetch(`${API}/api/demo`, { method: 'POST' });
+    if (!res.ok) throw new Error('Demo failed');
+    const { job_id } = await res.json();
+    currentJobId = job_id;
+    pollJob(job_id);
+  } catch(err) {
+    showToast('Demo error: ' + err.message, true);
+    resetProgress();
+  }
+}
+
+function pollJob(jobId) {
+  clearInterval(pollTimer);
+  let stepIdx = 0;
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`${API}/api/status/${jobId}`);
+      const data = await res.json();
+
+      // Simulate step progress from status
+      if (data.status === 'running' && stepIdx < STEPS.length - 1) {
+        updateProgressStep(stepIdx++);
+      }
+
+      if (data.status === 'done') {
+        clearInterval(pollTimer);
+        updateProgressStep(STEPS.length - 1, 'done');
+        renderResults(data.result);
+        showToast('✓ Summary generated');
+      } else if (data.status === 'error') {
+        clearInterval(pollTimer);
+        showToast('Agent error: ' + data.error, true);
+        resetProgress();
+      }
+    } catch(e) {
+      // Network hiccup — keep polling
+    }
+  }, 1200);
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function startProgress() {
+  document.getElementById('welcomePanel').style.display = 'none';
+  document.getElementById('resultsPanel').style.display = 'none';
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('statsSection').style.display = 'none';
+  document.getElementById('runBtn').disabled = true;
+
+  const block = document.getElementById('progressBlock');
+  block.innerHTML = STEPS.map((s, i) => `
+    <div class="step-row" id="step-${s}">
+      <div class="step-dot pending" id="dot-${s}"></div>
+      <span class="step-name muted" id="name-${s}">${s.replace(/_/g,' ')}</span>
+    </div>
+  `).join('');
+}
+
+function updateProgressStep(idx, forceDone) {
+  STEPS.forEach((s, i) => {
+    const dot = document.getElementById('dot-'+s);
+    const name = document.getElementById('name-'+s);
+    if (!dot) return;
+    if (forceDone === 'done') {
+      dot.className = 'step-dot done'; name.className = 'step-name';
+    } else if (i < idx) {
+      dot.className = 'step-dot done'; name.className = 'step-name';
+    } else if (i === idx) {
+      dot.className = 'step-dot active'; name.className = 'step-name';
+    } else {
+      dot.className = 'step-dot pending'; name.className = 'step-name muted';
+    }
+  });
+}
+
+function resetProgress() {
+  document.getElementById('runBtn').disabled = false;
+  updateRunBtn();
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(result) {
+  if (!result) return;
+
+  // Stats
+  document.getElementById('statsSection').style.display = 'block';
+  document.getElementById('statSteps').textContent = result.steps || '—';
+  const nc = result.conflicts?.total_conflicts || 0;
+  const ne = result.escalations?.length || 0;
+  document.getElementById('statConflicts').textContent = nc;
+  document.getElementById('statEscalations').textContent = ne;
+
+  // Show results panel
+  document.getElementById('resultsPanel').style.display = 'flex';
+
+  // Summary tab
+  document.getElementById('summaryTitle').textContent = `Patient ${result.patient_id}`;
+  document.getElementById('summaryMeta').textContent =
+    `${result.steps} steps · ${nc} conflict(s) · ${ne} escalation(s)`;
+  document.getElementById('summaryText').innerHTML = highlightSummary(result.summary || '');
+
+  // Warnings
+  const wb = document.getElementById('warningsBar');
+  if (result.warnings && result.warnings.length) {
+    wb.innerHTML = `<div class="warn-bar"><strong>⚠ Warnings</strong><ul>${
+      result.warnings.map(w => `<li>${escHtml(w)}</li>`).join('')
+    }</ul></div>`;
+  } else { wb.innerHTML = ''; }
+
+  // Trace
+  document.getElementById('traceCount').textContent = result.trace?.trace?.length || 0;
+  renderTrace(result.trace?.trace || []);
+
+  // Conflicts
+  document.getElementById('conflictCount').textContent = nc;
+  renderConflicts(result.conflicts?.conflicts || []);
+
+  // Escalations
+  document.getElementById('escalationCount').textContent = ne;
+  renderEscalations(result.escalations || []);
+
+  switchTab('summary', document.querySelector('.tab-btn'));
+  updateRunBtn();
+}
+
+function highlightSummary(text) {
+  return escHtml(text)
+    .replace(/\[MISSING[^\]]*\]/g, m => `<span class="hl-missing">${m}</span>`)
+    .replace(/\[CONFLICT[^\]]*\]/g, m => `<span class="hl-conflict">${m}</span>`)
+    .replace(/\[PENDING[^\]]*\]/g, m => `<span class="hl-pending">${m}</span>`);
+}
+
+function renderTrace(steps) {
+  const list = document.getElementById('traceList');
+  if (!steps.length) { list.innerHTML = '<div class="no-data"><div class="no-data-icon">🔍</div>No trace data</div>'; return; }
+  list.innerHTML = steps.map((s, i) => `
+    <div class="trace-card" id="tc-${i}">
+      <div class="trace-head" onclick="toggleTrace(${i})">
+        <span class="trace-num">${s.step || i+1}</span>
+        <span class="trace-type-badge tb-${s.type}">${s.type}</span>
+        <span class="trace-reasoning">${escHtml(s.reasoning || '')}</span>
+        <span class="trace-dur">${s.duration_ms ? s.duration_ms+'ms' : ''}</span>
+        <span class="trace-chevron">▶</span>
+      </div>
+      <div class="trace-body">
+        <div class="trace-json">${escHtml(JSON.stringify({
+          action: s.action, inputs: s.inputs, result: s.result, next: s.next_step
+        }, null, 2))}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTrace(i) {
+  const card = document.getElementById('tc-'+i);
+  card.classList.toggle('open');
+}
+
+function renderConflicts(conflicts) {
+  const el = document.getElementById('conflictsList');
+  if (!conflicts.length) {
+    el.innerHTML = '<div class="no-data"><div class="no-data-icon">✓</div>No conflicts detected across source notes.</div>';
+    return;
+  }
+  el.innerHTML = conflicts.map(c => `
+    <div class="conflict-card ${c.severity}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="conflict-field">${escHtml(c.field)}</span>
+        <span class="severity-chip ${c.severity}">${c.severity}</span>
+      </div>
+      <div class="conflict-msg">${escHtml(c.message)}</div>
+      <div class="conflict-values">
+        ${(c.values||[]).map(v => `
+          <div class="conflict-value">
+            <span class="cv-src">${escHtml(v.source)}</span>
+            <span class="cv-val">${escHtml(v.value)}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderEscalations(escalations) {
+  const el = document.getElementById('escalationsList');
+  if (!escalations.length) {
+    el.innerHTML = '<div class="no-data"><div class="no-data-icon">✓</div>No escalations raised.</div>';
+    return;
+  }
+  el.innerHTML = escalations.map(e => `
+    <div class="esc-card ${e.severity}">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="esc-id">${e.id || ''}</span>
+        <span class="severity-chip ${e.severity}">${e.severity}</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">${escHtml(e.category||'')}</span>
+      </div>
+      <div class="esc-desc">${escHtml(e.description||'')}</div>
+      <div class="esc-action">→ ${escHtml(e.action||'')}</div>
+    </div>
+  `).join('');
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelectorAll('.tab-btn')[0].classList.add('active');
+  const panel = document.getElementById('tab-'+name);
+  if (panel) panel.classList.add('active');
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function copySummary() {
+  const text = document.getElementById('summaryText').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+}
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isErr ? 'var(--red)' : 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Restore key from session
+const savedKey = sessionStorage.getItem('gemini_key');
+if (savedKey) { document.getElementById('apiKey').value = savedKey; updateRunBtn(); }
+</script>
+</body>
+</html>
