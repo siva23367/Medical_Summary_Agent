@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 MAX_STEPS = 40          # Hard cap — agent stops here regardless
 MAX_RETRIES = 3         # Per-tool retry limit
-OPENROUTER_MODEL = "openai/gpt-4.1-mini" # Free tier model — change to gemini-1.5-pro if needed
+OPENROUTER_MODEL = "openai/gpt-4.1-mini" 
 MAX_TOKENS = 2000
 
 MISSING = "[MISSING — CLINICIAN REVIEW REQUIRED]"
