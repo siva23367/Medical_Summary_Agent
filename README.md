@@ -53,7 +53,7 @@ pip install -r requirements.txt
 ### 5. Configure OpenRouter API Key
 
 ```bash
-export OPEN_ROUTER_API_KEY=your-api-key
+export OPENROUTER_API_KEY=your-api-key
 ```
 
 ### 6. Navigate to Backend Directory
