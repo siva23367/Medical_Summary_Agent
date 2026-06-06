@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 MAX_STEPS = 40          # Hard cap — agent stops here regardless
 MAX_RETRIES = 3         # Per-tool retry limit
-GEMINI_MODEL = "gemini-1.5-flash"   # Free tier model — change to gemini-1.5-pro if needed
+OPENROUTER_MODEL = "openai/gpt-4.1-mini" # Free tier model — change to gemini-1.5-pro if needed
 MAX_TOKENS = 2000
 
 MISSING = "[MISSING — CLINICIAN REVIEW REQUIRED]"
@@ -148,7 +148,7 @@ from openai import OpenAI
 import os
 
 client = OpenAI(
-    api_key="ENTER-YOUR-KEY-HERE",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1"
 )
 
